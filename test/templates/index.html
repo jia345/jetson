@@ -13,7 +13,15 @@
           $.getJSON($SCRIPT_ROOT + '/_send_cmd', {
             cmd: $('input[name=cmd]').val(),
           }, function(data) {
-            $('#result').text(data.result + data.ts + data.cmd);
+            var d = new Date(data.ts * 1000);
+            var time = d.getUTCFullYear() +
+                    '-' + ('0' + d.getUTCMonth()).slice(-2) +
+                    '-' + ('0' + d.getUTCDate()).slice(-2) + 
+                    ' ' + ('0' + d.getUTCHours()).slice(-2) +
+                    ':' + ('0' + d.getUTCMinutes()).slice(-2) +
+                    ':' + ('0' + d.getUTCSeconds()).slice(-2) +
+                    '.' + (d.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5);
+            $('#result').text(" " + data.result + ",  " + data.cmd + ",  " + time);
             $('input[name=cmd]').focus().select();
           });
           return false;
@@ -40,7 +48,8 @@
 
   <body>
     <h1>cloud server</h1>
-    <p><input type=text size=5 name='cmd'>  <a href=# id=send>send cmd</a>  <span id=result>  empty</span></p>
+    <p><input type=text size=5 name='cmd'>  <a href=# id=send>send cmd</a></p>
+    <p><span id=result>  empty</span></p>
     <p><a href=# id=long_run>long run</a><span id=long_run_result>stopped</span></p>
 
   </body>
