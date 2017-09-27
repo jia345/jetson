@@ -210,5 +210,6 @@ if __name__ == "__main__":
     theCameraCtrl = CameraCtrl()
     jetson = Jetson(theDoorCtrl, theCameraCtrl)
     jetson.start()
+    print 'hhhhhh'
 
     reactor.run()

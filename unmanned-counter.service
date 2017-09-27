@@ -1,0 +1,12 @@
+[Unit]
+Description=daemon for unmanned counter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /usr/local/unmanned-counter/jetson.py
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStartPre=
+
+[Install]
+WantedBy=multi-user.target
