@@ -18,32 +18,39 @@ class DoorCtrl():
         Controller.available_pins = [OPEN_THE_DOOR_GPIO,CHECK_THE_DOOR_GPIO]
         Controller.alloc_pin(number=OPEN_THE_DOOR_GPIO, direction='out')
         Controller.alloc_pin(number=CHECK_THE_DOOR_GPIO, direction='in',callback=self.door_is_closed,edge='falling')
+        Controller.set_pin(OPEN_THE_DOOR_GPIO)
 
     def door_is_closed(self,pin, state):
         dateTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
         print format("the door is closed !!! at %s " % dateTime)
         print format("pin = %d state = %d" % (pin, state))
-        self.door_state = DOOR_IN_CLOSE
+        if state == False:
+            self.door_state = DOOR_IN_CLOSE
+        else :
+            Controller.set_pin(OPEN_THE_DOOR_GPIO)
 
         if self.door_closed_cb != None :
             self.door_closed_cb()
 
     def open_the_door(self):
-        Controller.set_pin(OPEN_THE_DOOR_GPIO)
+        if self.door_state == DOOR_IN_OPEN:
+            return 
+        Controller.reset_pin(OPEN_THE_DOOR_GPIO)
         dateTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
         print format("the door is opend !!! at %s " % dateTime)
-        sleep(2)
-        Controller.reset_pin(OPEN_THE_DOOR_GPIO)
+        time.sleep(2)
+        Controller.set_pin(OPEN_THE_DOOR_GPIO)
         self.door_state = DOOR_IN_OPEN
 
     def check_the_door(self):
         state = Controller.get_pin_state(CHECK_THE_DOOR_GPIO)
-
-        return self.door_state
-
-
-
-
+        if state == True:
+            print "The door state is open !"
+            return DOOR_IN_OPEN
+        else :
+            print "The door state is close !"
+            return DOOR_IN_CLOSE
+        pass
 
 if __name__ == "__main__":
     theDoorCtrl = DoorCtrl()

@@ -4,6 +4,7 @@ from twisted.internet import reactor, task
 from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 import doorCtrl
+import json
 
 agent = Agent(reactor)
 theDoorCtrl = doorCtrl.DoorCtrl()
@@ -18,9 +19,9 @@ def inquiryCmd():
     d.addCallback(cbResponse)
 
 def cbResponse(rsp):
-    print('Response version:', rsp.version)
-    print('Response code:', rsp.code)
-    print('Response phrase:', rsp.phrase)
+    #print('Response version:', rsp.version)
+    #print('Response code:', rsp.code)
+    #print('Response phrase:', rsp.phrase)
     d = readBody(rsp)
     d.addCallback(cbBody)
     return d
@@ -30,10 +31,18 @@ def cbBody(body):
     print('response body:', body)
     # !!!! don't know why there is always an error "Unhandled error in Deferred:"
     # !!!! if below line is enabled
-    #theDoorCtrl.open_the_door()
-    print('OOOOO')
+    parsed = json.loads(body)
+    cmd = parsed['msg']
+    print('cmd=' + cmd)
+    print(len(cmd))
+    if cmd == 'openDoor':
+        print('haha')
+        theDoorCtrl.open_the_door()
+    else:
+        print('no cmd')
 
-cmd = task.LoopingCall(inquiryCmd)
-cmd.start(1.0)
+if __name__ == "__main__":
+    cmd = task.LoopingCall(inquiryCmd)
+    cmd.start(1.0)
 
-reactor.run()
+    reactor.run()

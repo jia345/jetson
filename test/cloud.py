@@ -25,6 +25,13 @@ def bg_thread():
 '''
 
 isCmdSent = True
+cmd = 'None'
+
+@app.route('/_open_door')
+def openDoor():
+    global cmd
+    cmd = 'openDoor'
+    return jsonify(cmd='openDoor')
 
 @app.route('/_send_cmd')
 def send_cmd():
@@ -60,7 +67,10 @@ def index():
 
 @app.route('/hello')
 def hello():
-    return jsonify(msg='hello')
+    global cmd
+    preCmd = cmd
+    cmd = 'None'
+    return jsonify(msg=preCmd)
 
 '''
 @socketio.on('connect', namespace='/notify')

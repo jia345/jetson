@@ -15,6 +15,10 @@
         //socket.on('notify_items', function(msg) {
         //  $('#notify_items').text('notification: ' + msg.data);
         //});
+        var open_door = function(e) {
+          $.getJSON($SCRIPT_ROOT + '/_open_door', {}, function(data) {});
+          return false;
+        };
         var submit_form = function(e) {
           $.getJSON($SCRIPT_ROOT + '/_send_cmd', {
             cmd: $('input[name=cmd]').val(),
@@ -42,24 +46,25 @@
           });
           return false;
         };
-        $('a#send').bind('click', submit_form);
-        $('a#long_run').bind('click', long_run);
-        $('input[type=text]').bind('keydown', function(e) {
-          if (e.keyCode == 13) {
-            submit_form(e);
-          }
-        });
-        $('input[name=cmd]').focus();
+        $('a#openDoor').bind('click', open_door);
+        //$('a#send').bind('click', submit_form);
+        //$('a#long_run').bind('click', long_run);
+        //$('input[type=text]').bind('keydown', function(e) {
+        //  if (e.keyCode == 13) {
+        //    submit_form(e);
+        //  }
+        //});
+        //$('input[name=cmd]').focus();
       });
     </script>
   </head>
 
   <body>
     <h1>cloud server</h1>
-    <p><input type=text size=5 name='cmd'>  <a href=# id=send>send cmd</a></p>
-    <p><span id=result>empty</span></p>
+    <p><a href=# id=openDoor>Open Door</a></p>
+    <!-- <p><span id=result>empty</span></p>
     <p><a href=# id=long_run>long run</a><span id=long_run_result>stopped</span></p>
-    <p><div id=notify_items>items</div></p>
+    <p><div id=notify_items>items</div></p> -->
 
   </body>
 </html>
