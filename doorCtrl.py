@@ -26,11 +26,11 @@ class DoorCtrl():
         print format("pin = %d state = %d" % (pin, state))
         if state == False:
             self.door_state = DOOR_IN_CLOSE
+            if self.door_closed_cb != None :
+                self.door_closed_cb()
         else :
             Controller.set_pin(OPEN_THE_DOOR_GPIO)
 
-        if self.door_closed_cb != None :
-            self.door_closed_cb()
 
     def open_the_door(self):
         if self.door_state == DOOR_IN_OPEN:
