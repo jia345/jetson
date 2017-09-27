@@ -1,18 +1,19 @@
 # The purpose of this script is to provide a mimic web server in cloud
 # 1. dump the messages between web server and main controller in unmanned box
 # 2. interactively sending request or receiving response
-from threading import Lock
+
+#from threading import Lock
 from flask import Flask, jsonify, render_template, request
-from flask_socketio import SocketIO, emit
+#from flask_socketio import SocketIO, emit
 import time
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 app.logger.info('hihi')
 async_mode = None
 thread = None
-thread_lock = Lock()
+#thread_lock = Lock()
 
-socketio = SocketIO(app, async_mode=async_mode)
+#socketio = SocketIO(app, async_mode=async_mode)
 
 '''
 def bg_thread():
@@ -54,22 +55,23 @@ def long_run():
 
 @app.route('/')
 def index():
-    # return render_template('index.html', async_mode=socketio.async_mode)
+    #return render_template('index.html', async_mode=socketio.async_mode)
     return render_template('index.html')
 
 @app.route('/hello')
 def hello():
-    return 'hello'
+    return jsonify(msg='hello')
 
-# @socketio.on('connect', namespace='/notify')
-# def socketio_connect():
-#     emit('response', {'data': 'connected'})
+'''
+@socketio.on('connect', namespace='/notify')
+def socketio_connect():
+    emit('response', {'data': 'connected'})
+'''
 
 if __name__ == '__main__':
-    # app.debug = True
-    # app.run(host='0.0.0.0', threaded=True)
-    app.host = '0.0.0.0'
-    app.threaded = True
     app.debug = True
-    socketio.run(app)
-    # app.run()
+    app.run(host='0.0.0.0', threaded=True)
+    #app.host = '0.0.0.0'
+    #app.threaded = True
+    #app.debug = True
+    #socketio.run(app)

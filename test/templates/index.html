@@ -4,16 +4,17 @@
     <title>mimic web server</title>
     <script type=text/javascript src="{{
       url_for('static', filename='jquery.js') }}"></script>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+    <!-- <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script> -->
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
     <script type="text/javascript">
       var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     </script>
     <script type="text/javascript">
       $(function() {
-        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/notify')
-        socket.on('notify_items', function(msg) {
-          $('#notify_items').text('notification: ' + msg.data);
-        });
+        //var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/notify')
+        //socket.on('notify_items', function(msg) {
+        //  $('#notify_items').text('notification: ' + msg.data);
+        //});
         var submit_form = function(e) {
           $.getJSON($SCRIPT_ROOT + '/_send_cmd', {
             cmd: $('input[name=cmd]').val(),
