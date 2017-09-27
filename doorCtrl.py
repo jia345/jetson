@@ -25,6 +25,8 @@ class DoorCtrl():
         print format("the door is closed !!! at %s " % dateTime)
         print format("pin = %d state = %d" % (pin, state))
         if state == False:
+            if self.door_state == DOOR_IN_CLOSE:
+                return
             self.door_state = DOOR_IN_CLOSE
             if self.door_closed_cb != None :
                 self.door_closed_cb()

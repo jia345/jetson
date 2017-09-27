@@ -1,13 +1,12 @@
 # This is the main controller running on Jetson TX1 board
 
-from twisted.internet import reactor, task
+from twisted.internet import reactor, task, defer, threads
 from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 import doorCtrl
 import json
-
-agent = Agent(reactor)
-theDoorCtrl = doorCtrl.DoorCtrl()
+import time
+import cv2
 
 def inquiryCmd():
     d = agent.request(
@@ -17,31 +16,64 @@ def inquiryCmd():
             None
             )
     d.addCallback(cbResponse)
+    d.addErrback(cbError)
+
+def cbError(reason):
+    print(reason)
 
 def cbResponse(rsp):
-    #print('Response version:', rsp.version)
-    #print('Response code:', rsp.code)
-    #print('Response phrase:', rsp.phrase)
     d = readBody(rsp)
     d.addCallback(cbBody)
     return d
 
 def cbBody(body):
     global theDoorCtrl
-    print('response body:', body)
-    # !!!! don't know why there is always an error "Unhandled error in Deferred:"
-    # !!!! if below line is enabled
+    #print('response body:', body)
     parsed = json.loads(body)
     cmd = parsed['msg']
-    print('cmd=' + cmd)
-    print(len(cmd))
+    print('>>> received command is ' + cmd)
     if cmd == 'openDoor':
-        print('haha')
+        # open door and camera
+        #dl = list()
+        #dl.append(d)
+        #deferList = defer.DeferredList(dl)
         theDoorCtrl.open_the_door()
-    else:
-        print('no cmd')
+        d = threads.deferToThread(openCamera)
+        d.addCallback(cbOpenCamera)
+        #threads.deferToThread(recognition)
+        #openCamera()
+
+def openCamera():
+    time.sleep(1)
+    print('*** camera openned')
+    return False
+
+def cbOpenCamera(result):
+    d = threads.deferToThread(recognition)
+    d.addCallback(cbRecognition)
+
+def recognition():
+    time.sleep(3)
+    #count = 100000
+    #while count > 0:
+    #    count = count - 1
+    print('*** recognited')
+    result = '{item="a"}'
+    #return jason.loads("{item='a'}")
+    return result
+
+def cbRecognition(result):
+    print(result)
+    d = threads.deferToThread(recognition)
+    d.addCallback(cbRecognition)
+
+def cbDoorClosed():
+    print('*** processing door closed ***')
 
 if __name__ == "__main__":
+    agent = Agent(reactor)
+    theDoorCtrl = doorCtrl.DoorCtrl(cbDoorClosed)
+
     cmd = task.LoopingCall(inquiryCmd)
     cmd.start(1.0)
 
