@@ -3,6 +3,9 @@
 # 2. interactively sending request or receiving response
 
 #from threading import Lock
+import logging
+from logging.handlers import RotatingFileHandler
+
 from flask import Flask, jsonify, render_template, request
 #from flask_socketio import SocketIO, emit
 import time
@@ -72,6 +75,12 @@ def hello():
     cmd = 'None'
     return jsonify(msg=preCmd)
 
+@app.route('/checkout')
+def checkout():
+    #cmd = request.args.get('request', 0, type=str)
+    return jsonify(msg='haha')
+
+    
 '''
 @socketio.on('connect', namespace='/notify')
 def socketio_connect():
