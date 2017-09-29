@@ -3,13 +3,18 @@
 from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
 from twisted.internet import reactor, task, defer, threads, protocol
-from twisted.web.client import Agent, readBody
+from twisted.web.client import Agent, readBody, ProxyAgent
+from twisted.internet.endpoints import HostnameEndpoint, TCP4ClientEndpoint
 from twisted.web.http_headers import Headers
 import json
 import time
 import urllib
 #import cv2
-#import doorCtrl
+import doorCtrl
+
+#url = 'http://localhost:5000'
+url = 'http://121.40.127.65:2121'
+#theDoorCtrl = None
 
 class StringProducer(object):
     implements(IBodyProducer)
@@ -39,7 +44,10 @@ class SimpleReceiver(protocol.Protocol):
         self.d.callback(self.buf)
 
 def httpRequest(url, values=None, headers=None, method='POST'):
-    agent = Agent(reactor)
+    endpoint = TCP4ClientEndpoint(reactor, "135.245.48.34", 8000)
+    #endpoint = HostnameEndpoint(reactor, "135.245.48.34", 8000)
+    agent = ProxyAgent(endpoint)
+    #agent = Agent(reactor)
     data = urllib.urlencode(values) if values else None
 
     d = agent.request(method, url, Headers(headers) if headers else {},
@@ -60,19 +68,35 @@ def httpRequest(url, values=None, headers=None, method='POST'):
 def cbError(reason):
     print(reason)
 
-def cbResponse(rsp):
-    d = readBody(rsp)
-    d.addCallback(cbBody)
-    return d
+def cbCollectInfoResponse(rsp):
+    global theDoorCtrl
+    print '<<<<<<<<<< rsp is %s' % rsp
+    parsed = None
+    try:
+        parsed = json.loads(rsp)
+        cmd = parsed['response']
+        #print('>>> received command is %s' % cmd)
+        if cmd == 'openDoor':
+            theDoorCtrl.open_the_door()
+            print 'the door is opened'
+    except:
+        pass
+        #rc = parsed['code']
+        #if rc == 200:
+        #    print 'okok'
+        #else:
+        #    print 'oops'
 
 def cbCheckoutResponse(rsp):
-    print rsp
+    print "hihi %s" % rsp
 
 def completeOrder():
-    url = 'http://localhost:5000'
-    #url = 'http://121.40.127.65.2121'
-    postData = { 'class': 'Refrigerator', 'method': 'completeOrder', 'id': 'xxx', 'user_id': '111', 'door_id': '222',
-                'items[]':'[[sku_id=1,num=1],[sku_id=2,num=2]]'}
+    global url
+
+    postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id', '0x000000017410b0c810000000150000c0'), ('items[]', "{'sku_id':33212,'num':2}"),
+                ('items[]', "{'sku_id':33525,'num':1}"), ('items[]', "{'sku_id':33210,'num':8}") ]
+    #postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': '0x000000017410b0c810000000150000c0') ]
+    #postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': '0x000000017410b0c810000000150000c0') ]
     d = httpRequest(url,
             postData,
             {'User-Agent': ['Jetson Tx1'], 'Content-Type': ['application/x-www-form-urlencoded']},
@@ -85,15 +109,22 @@ def inquiryCmd():
 
     # 1. stop camera
     # 2. checkout
-    url = 'http://localhost:5000'
-    #url = 'http://121.40.127.65.2121'
-    postData = { 'class': 'Refrigerator', 'method': 'collectInfo', 'id': 'xxx', 'is_open': '0'}
+    #url = 'http://localhost:5000'
+    global theDoorCtrl
+    global url
+    status = theDoorCtrl.check_the_door()
+    is_open = 0
+    if status == True:
+        is_open = 1
+
+    postData = { 'class': 'Refrigerator', 'method': 'collectInfo', 'door_id': '0x000000017410b0c810000000150000c0', 'is_open': is_open }
+    #print '>>>>>>>>>> %s' % postData
     d = httpRequest(url,
             postData,
             {'User-Agent': ['Jetson Tx1'], 'Content-Type': ['application/x-www-form-urlencoded']},
             'POST'
             )
-    d.addCallback(cbCheckoutResponse)
+    d.addCallback(cbCollectInfoResponse)
     d.addErrback(cbError)
     #body = {'request': 'checkout'}
     #body = json.dumps(body)
@@ -116,22 +147,26 @@ def inquiryCmd():
     #d.addCallback(cbResponse)
     #d.addErrback(cbError)
 
-def cbBody(body):
-    #global theDoorCtrl
-    #print('response body:', body)
-    parsed = json.loads(body)
-    cmd = parsed['msg']
-    print('>>> received command is ' + cmd)
-    if cmd == 'openDoor':
-        # open door and camera
-        #dl = list()
-        #dl.append(d)
-        #deferList = defer.DeferredList(dl)
-        #theDoorCtrl.open_the_door()
-        d = threads.deferToThread(openCamera)
-        d.addCallback(cbOpenCamera)
-        #threads.deferToThread(recognition)
-        #openCamera()
+#def cbBody(body):
+#    #global theDoorCtrl
+#    #print('response body:', body)
+#    parsed = json.loads(body)
+#
+#    cmd = parsed['msg']
+#    print('>>> received command is ' + cmd)
+#    if cmd == 'openDoor':
+#        # open door and camera
+#        #dl = list()
+#        #dl.append(d)
+#        #deferList = defer.DeferredList(dl)
+#        theDoorCtrl.open_the_door()
+#        is_open = 1
+#        d = threads.deferToThread(openCamera)
+#        d.addCallback(cbOpenCamera)
+#        #threads.deferToThread(recognition)
+#        #openCamera()
+#    else:
+#        is_open = 0
 
 def openCamera():
     time.sleep(1)
@@ -158,32 +193,17 @@ def cbRecognition(result):
     d.addCallback(cbRecognition)
 
 def cbDoorClosed():
-    print('*** processing door closed ***')
-
-    #def cbResponse():
-    #    print('***** hihi ****')
-    #def cbError(reason):
-    #    print(reason)
-
-    ## 1. stop camera
-    ## 2. checkout
-    #body = {'request': 'checkout'}
-    #body = json.dumps(obj)
-    #body = StringBodyProducer(body)
-
-    #d = agent.request(
-    #        b'POST',
-    #        b'http://localhost:5000/checkout',
-    #        Headers({'User-Agent': ['HelloHello']}),
-    #        body 
-    #        )
-    #d.addCallback(cbResponse)
-    #d.addErrback(cbError)
+    print '******************************'
+    print '*** processing door closed ***'
+    print '******************************'
+    completeOrder()
 
 if __name__ == "__main__":
     #agent = Agent(reactor)
-    #theDoorCtrl = doorCtrl.DoorCtrl(cbDoorClosed)
 
+    #inquiryCmd()
+    global theDoorCtrl
+    theDoorCtrl = doorCtrl.DoorCtrl(cbDoorClosed)
     cmd = task.LoopingCall(inquiryCmd)
     cmd.start(1.0)
 

@@ -3,7 +3,7 @@
 # 2. interactively sending request or receiving response
 
 #from threading import Lock
-import logging
+#import logging
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, jsonify, render_template, request
@@ -82,7 +82,7 @@ def root():
     data = request.data
     classValue = request.values.get('class')
     methodValue = request.values.get('method')
-    #app.logger.info('classValue = %s' % classValue)
+    app.logger.info('classValue = %s' % classValue)
     msg = None
     if classValue == 'Refrigerator':
         if methodValue == 'completeOrder':
@@ -97,12 +97,11 @@ def root():
             cmd = None
             chipId = request.values.get('id')
             isOpened = request.values.get('is_open')
-            #app.logger.info('jetson tells me the door status is ' + isOpened)
+            app.logger.info('jetson tells me the door status is ' + isOpened)
 
+            doorState = 0
             if preCmd == 'openDoor':
                 doorState = 1
-            else:
-                doorState = 0
             app.logger.info('I need the door status is %d' % doorState)
             msg = {
                 'id': 'xxxx',

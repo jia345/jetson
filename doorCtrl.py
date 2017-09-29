@@ -47,10 +47,10 @@ class DoorCtrl():
     def check_the_door(self):
         state = Controller.get_pin_state(CHECK_THE_DOOR_GPIO)
         if state == True:
-            print "The door state is open !"
+            #print "The door state is open !"
             return DOOR_IN_OPEN
         else :
-            print "The door state is close !"
+            #print "The door state is close !"
             return DOOR_IN_CLOSE
         pass
 
