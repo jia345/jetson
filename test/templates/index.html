@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <title>mimic web server</title>
+    <script type=text/javascript src="{{
+      url_for('static', filename='jquery.js') }}"></script>
+    <script type="text/javascript">
+      var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
+    <script type="text/javascript">
+      $(function() {
+        var submit_form = function(e) {
+          $.getJSON($SCRIPT_ROOT + '/_send_cmd', {
+            cmd: $('input[name=cmd]').val(),
+          }, function(data) {
+            $('#result').text(data.result + data.ts + data.cmd);
+            $('input[name=cmd]').focus().select();
+          });
+          return false;
+        };
+        var long_run = function(e) {
+          $.getJSON($SCRIPT_ROOT + '/_long_run', {
+            long_run: true
+          }, function(data) {
+            $('#long_run_result').text(data.result);
+          });
+          return false;
+        };
+        $('a#send').bind('click', submit_form);
+        $('a#long_run').bind('click', long_run);
+        $('input[type=text]').bind('keydown', function(e) {
+          if (e.keyCode == 13) {
+            submit_form(e);
+          }
+        });
+        $('input[name=cmd]').focus();
+      });
+    </script>
+  </head>
+
+  <body>
+    <h1>cloud server</h1>
+    <p><input type=text size=5 name='cmd'>  <a href=# id=send>send cmd</a>  <span id=result>  empty</span></p>
+    <p><a href=# id=long_run>long run</a><span id=long_run_result>stopped</span></p>
+
+  </body>
+</html>
