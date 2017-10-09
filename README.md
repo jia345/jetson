@@ -17,4 +17,4 @@ sudo python jetson.py
 ```
 
 ### How to send command to board
-![open door](github.com/jia345/jetson/edit/master/doc/opendoor.png)
+![open door](doc/opendoor.png)
