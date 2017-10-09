@@ -10,3 +10,11 @@ python cloud.py
 ```
 2. open http://<board_ip_address>:5000 in your favorite web browser
 3. done
+
+### How to start the software on board
+```shell
+sudo python jetson.py
+```
+
+### How to send command to board
+![open door](github.com/jia345/jetson/edit/master/doc/opendoor.png)
