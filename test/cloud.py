@@ -11,7 +11,6 @@ from flask import Flask, jsonify, render_template, request
 import time
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-app.logger.info('hihi')
 async_mode = None
 thread = None
 #thread_lock = Lock()
@@ -34,53 +33,85 @@ cmd = 'None'
 def openDoor():
     global cmd
     cmd = 'openDoor'
+    app.logger.info('web request opendoor')
     return jsonify(cmd='openDoor')
 
-@app.route('/_send_cmd')
-def send_cmd():
-    # global isCmdSend
-    # isCmdSend = False
-    cmd = request.args.get('cmd', 0, type=str)
-    # ts = request.args.get('timestamp', 0, type=int)
-    ts = time.time()
-    # need to poll until Jetson board takes away the command
-    result = {
-        'result' : 'ok',
-        'cmd'    : cmd,
-        'ts'     : ts
-    }
-    return jsonify(result)
+# @app.route('/_send_cmd')
+# def send_cmd():
+#     # global isCmdSend
+#     # isCmdSend = False
+#     cmd = request.args.get('cmd', 0, type=str)
+#     # ts = request.args.get('timestamp', 0, type=int)
+#     ts = time.time()
+#     # need to poll until Jetson board takes away the command
+#     result = {
+#         'result' : 'ok',
+#         'cmd'    : cmd,
+#         'ts'     : ts
+#     }
+#     return jsonify(result)
 
-@app.route('/_long_run')
-def long_run():
-    time.sleep(10)
-    count = 10000000000
-    while count < 0:
-        print 'the count is:', count
-        count = count - 1
-    result = {
-        'result' : 'zzzz',
-    }
-    return jsonify(result)
+# @app.route('/_long_run')
+# def long_run():
+#     time.sleep(10)
+#     count = 10000000000
+#     while count < 0:
+#         print 'the count is:', count
+#         count = count - 1
+#     result = {
+#         'result' : 'zzzz',
+#     }
+#     return jsonify(result)
 
-@app.route('/')
-def index():
-    #return render_template('index.html', async_mode=socketio.async_mode)
-    return render_template('index.html')
+# @app.route('/')
+# def index():
+#     #return render_template('index.html', async_mode=socketio.async_mode)
+#     return render_template('index.html')
 
-@app.route('/hello')
-def hello():
-    global cmd
-    preCmd = cmd
-    cmd = 'None'
-    return jsonify(msg=preCmd)
+# @app.route('/hello')
+# def hello():
+#     global cmd
+#     preCmd = cmd
+#     cmd = 'None'
+#     return jsonify(msg=preCmd)
 
-@app.route('/checkout')
-def checkout():
+@app.route('/', methods=['GET','POST'])
+def root():
     #cmd = request.args.get('request', 0, type=str)
-    return jsonify(msg='haha')
+    global cmd
+    data = request.data
+    classValue = request.values.get('class')
+    methodValue = request.values.get('method')
+    #app.logger.info('classValue = %s' % classValue)
+    msg = None
+    if classValue == 'Refrigerator':
+        if methodValue == 'completeOrder':
+            chipId = request.values.get('id')
+            items = request.values.get('items[]')
+            msg = {
+                'id' : chipId,
+                'items[]' : items
+            }
+        if methodValue == 'collectInfo':
+            preCmd = cmd
+            cmd = None
+            chipId = request.values.get('id')
+            isOpened = request.values.get('is_open')
+            #app.logger.info('jetson tells me the door status is ' + isOpened)
 
-    
+            if preCmd == 'openDoor':
+                doorState = 1
+            else:
+                doorState = 0
+            app.logger.info('I need the door status is %d' % doorState)
+            msg = {
+                'id': 'xxxx',
+                'openDoor': doorState
+            }
+    else:
+        return render_template('index.html')
+    return jsonify(msg)
+
 '''
 @socketio.on('connect', namespace='/notify')
 def socketio_connect():
