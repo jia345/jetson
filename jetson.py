@@ -1,22 +1,22 @@
-# This is the main controller running on Jetson TX1 board
+# -*- coding: utf-8 -*-
+'''This is the main controller running on Jetson TX1 board
+'''
 
+import time
+import json
+import urllib
 from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
 from twisted.internet import reactor, task, defer, threads, protocol
-from twisted.web.client import Agent, readBody, ProxyAgent
-from twisted.internet.endpoints import HostnameEndpoint, TCP4ClientEndpoint
+from twisted.web.client import Agent, ProxyAgent
+from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.web.http_headers import Headers
-import json
-import time
-import urllib
 #import cv2
-import doorCtrl
-
-#url = 'http://localhost:5000'
-url = 'http://121.40.127.65:2121'
-#theDoorCtrl = None
+import doorCtrl as DoorCtrl
 
 class StringProducer(object):
+    '''A simple implementation of IBodyProducer
+    '''
     implements(IBodyProducer)
 
     def __init__(self, body):
@@ -24,149 +24,162 @@ class StringProducer(object):
         self.length = len(body)
 
     def startProducing(self, consumer):
+        '''simple implementation
+        '''
         consumer.write(self.body)
         return defer.succeed(None)
 
     def pauseProducing(self):
+        '''do nothing
+        '''
         pass
 
     def stopProducing(self):
+        '''do nothing
+        '''
         pass
 
 class SimpleReceiver(protocol.Protocol):
-    def __init__(self, d):
-        self.buf = ''; self.d = d
+    '''A simple implementation of receiver
+    '''
+    def __init__(self, obj_defer):
+        self.buf = ''
+        self.obj_defer = obj_defer
 
     def dataReceived(self, data):
         self.buf += data
 
     def connectionLost(self, reason):
-        self.d.callback(self.buf)
+        self.obj_defer.callback(self.buf)
 
-def httpRequest(url, values=None, headers=None, method='POST'):
-    endpoint = TCP4ClientEndpoint(reactor, "135.245.48.34", 8000)
-    #endpoint = HostnameEndpoint(reactor, "135.245.48.34", 8000)
-    agent = ProxyAgent(endpoint)
-    #agent = Agent(reactor)
-    data = urllib.urlencode(values) if values else None
+class HttpClient(object):
+    '''A simple http client based on twisted web client APIs
+    '''
+    def __init__(self, proxy=None):
+        self.proxy = proxy
 
-    d = agent.request(method, url, Headers(headers) if headers else {},
-        StringProducer(data) if data else None
-        )
-
-    def handle_response(response):
-        if response.code == 204:
-            d = defer.succeed('')
+    def request(self, url, values=None, headers=None, method='POST', cb_response=None, cb_error=None):
+        '''Send request to specified URL
+        The default method is POST.
+        If you don't input callback, it will use default callbacks which are defined internally.
+        '''
+        if self.proxy is None:
+            agent = Agent(reactor)
         else:
-            d = defer.Deferred()
-            response.deliverBody(SimpleReceiver(d))
-        return d
+            endpoint = TCP4ClientEndpoint(reactor, self.proxy[0], self.proxy[1])
+            agent = ProxyAgent(endpoint)
 
-    d.addCallback(handle_response)
-    return d
+        data = urllib.urlencode(values) if values else None
 
-def cbError(reason):
-    print(reason)
+        def __cb_response(response):
+            if response.code == 204:
+                rc_defer = defer.succeed('')
+            else:
+                rc_defer = defer.Deferred()
+                response.deliverBody(SimpleReceiver(rc_defer))
+            return rc_defer
 
-def cbCollectInfoResponse(rsp):
-    global theDoorCtrl
-    print '<<<<<<<<<< rsp is %s' % rsp
-    parsed = None
-    try:
-        parsed = json.loads(rsp)
-        cmd = parsed['response']
-        #print('>>> received command is %s' % cmd)
-        if cmd == 'openDoor':
-            theDoorCtrl.open_the_door()
-            print 'the door is opened'
-    except:
-        pass
-        #rc = parsed['code']
-        #if rc == 200:
-        #    print 'okok'
-        #else:
-        #    print 'oops'
+        def __cb_error(reason):
+            print reason
 
-def cbCheckoutResponse(rsp):
-    print "hihi %s" % rsp
+        rc_defer = agent.request(method,
+                                 url,
+                                 Headers(headers) if headers else {},
+                                 StringProducer(data) if data else None)
 
-def completeOrder():
-    global url
+        if cb_response is None:
+            rc_defer.addCallback(__cb_response)
+        else:
+            rc_defer.addCallback(cb_response)
 
-    postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id', '0x000000017410b0c810000000150000c0'), ('items[]', "{'sku_id':33212,'num':2}"),
-                ('items[]', "{'sku_id':33525,'num':1}"), ('items[]', "{'sku_id':33210,'num':8}") ]
-    #postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': '0x000000017410b0c810000000150000c0') ]
-    #postData = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': '0x000000017410b0c810000000150000c0') ]
-    d = httpRequest(url,
-            postData,
-            {'User-Agent': ['Jetson Tx1'], 'Content-Type': ['application/x-www-form-urlencoded']},
-            'POST'
-            )
-    d.addCallback(cbCheckoutResponse)
-    d.addErrback(cbError)
+        if cb_error is None:
+            rc_defer.addErrback(__cb_error)
+        else:
+            rc_defer.addCallback(cb_error)
+        return rc_defer
 
-def inquiryCmd():
+class Jetson(object):
+    '''main class for controlling unmanned counter
+    '''
+    DEFAULT_POST_HEADER = {'User-Agent': ['Jetson Tx1'],
+                           'Content-Type': ['application/x-www-form-urlencoded']}
+    def __init__(self, door_ctrl, camera_ctrl, http_client=None):
+        self.door_ctrl = door_ctrl
+        self.camera_ctrl = camera_ctrl
+        self.http_client = http_client
+        self.url = 'http://localhost:5000'
+        self.shopping_cart = {}
+        #self.url = 'http://121.40.127.65:2121'
 
-    # 1. stop camera
-    # 2. checkout
-    #url = 'http://localhost:5000'
-    global theDoorCtrl
-    global url
-    status = theDoorCtrl.check_the_door()
-    is_open = 0
-    if status == True:
-        is_open = 1
+    def __collect_info(self):
+        status = self.door_ctrl.check_the_door()
+        is_open = 0
+        if status is True:
+            is_open = 1
 
-    postData = { 'class': 'Refrigerator', 'method': 'collectInfo', 'door_id': '0x000000017410b0c810000000150000c0', 'is_open': is_open }
-    #print '>>>>>>>>>> %s' % postData
-    d = httpRequest(url,
-            postData,
-            {'User-Agent': ['Jetson Tx1'], 'Content-Type': ['application/x-www-form-urlencoded']},
-            'POST'
-            )
-    d.addCallback(cbCollectInfoResponse)
-    d.addErrback(cbError)
-    #body = {'request': 'checkout'}
-    #body = json.dumps(body)
-    #body = StringProducer(body)
+        def __cb_collect_info_response(rsp):
+            print '<<<<<<<<<< response is %s' % rsp
+            try:
+                parsed = json.loads(rsp)
+                if 'response' in parsed.keys():
+                    cmd = parsed['response']
+                    if cmd == 'openDoor':
+                        self.door_ctrl.open_the_door()
+                        print 'the door is opened'
+                        # TODO: we shall start the camera
 
-    #d = agent.request(
-    #        b'POST',
-    #        b'http://localhost:5000/checkout',
-    #        Headers({'User-Agent': ['HelloHello']}),
-    #        body 
-    #        )
-    #d.addCallback(cbCheckoutResponse)
-    #d.addErrback(cbError)
-    #d = agent.request(
-    #        b'GET',
-    #        b'http://localhost:5000/hello',
-    #        Headers({'User-Agent': ['HelloHello']}),
-    #        None
-    #        )
-    #d.addCallback(cbResponse)
-    #d.addErrback(cbError)
+                if 'code' in parsed.keys():
+                    code = parsed.get('code')
+                    msg = parsed.get('msg')
+                    print 'code %d msg %s' % code, msg
+            except ValueError:
+                print 'response is not a valid JSON string'
 
-#def cbBody(body):
-#    #global theDoorCtrl
-#    #print('response body:', body)
-#    parsed = json.loads(body)
-#
-#    cmd = parsed['msg']
-#    print('>>> received command is ' + cmd)
-#    if cmd == 'openDoor':
-#        # open door and camera
-#        #dl = list()
-#        #dl.append(d)
-#        #deferList = defer.DeferredList(dl)
-#        theDoorCtrl.open_the_door()
-#        is_open = 1
-#        d = threads.deferToThread(openCamera)
-#        d.addCallback(cbOpenCamera)
-#        #threads.deferToThread(recognition)
-#        #openCamera()
-#    else:
-#        is_open = 0
+        post_data = {'class': 'Refrigerator',
+                     'method': 'collectInfo',
+                     'door_id': '0x000000017410b0c810000000150000c0',
+                     'is_open': is_open}
+        #print '>>>>>>>>>> %s' % postData
+        obj_defer = self.http_client.request(self.url,
+                                             post_data,
+                                             Jetson.DEFAULT_POST_HEADER,
+                                             'POST')
+        obj_defer.addCallback(__cb_collect_info_response)
+
+    def __cb_complete_order_response(self, rsp):
+        print "hihi %s" % rsp
+
+    def __complete_order(self):
+        post_data = [('class', 'Refrigerator'),
+                     ('method', 'completeOrder'),
+                     ('door_id', '0x000000017410b0c810000000150000c0'),
+                     ('items[]', "{'sku_id':33212,'num':2}"),
+                     ('items[]', "{'sku_id':33525,'num':1}"),
+                     ('items[]', "{'sku_id':33210,'num':8}")]
+        obj_defer = self.http_client.request(self.url,
+                                             post_data,
+                                             Jetson.DEFAULT_POST_HEADER,
+                                             'POST')
+        obj_defer.addCallback(self.__cb_complete_order_response)
+
+    def __cb_door_closed(self):
+        print '******************************'
+        print '*** processing door closed ***'
+        print '******************************'
+        self.__complete_order()
+
+    def start(self):
+        '''start the heart-beat task and register the callbacks of processing
+        door control and camera control
+
+        door control: when the door is closed, the camera will informed to be
+        sleep and stop scanning.
+
+        camera control: when new item is added to/removed from shopping cart,
+        camera shall inform main controller to update shopping cart
+        '''
+        cmd = task.LoopingCall(self.__collect_info)
+        cmd.start(1.0)
 
 def openCamera():
     time.sleep(1)
@@ -192,19 +205,10 @@ def cbRecognition(result):
     d = threads.deferToThread(recognition)
     d.addCallback(cbRecognition)
 
-def cbDoorClosed():
-    print '******************************'
-    print '*** processing door closed ***'
-    print '******************************'
-    completeOrder()
-
 if __name__ == "__main__":
-    #agent = Agent(reactor)
-
-    #inquiryCmd()
-    global theDoorCtrl
-    theDoorCtrl = doorCtrl.DoorCtrl(cbDoorClosed)
-    cmd = task.LoopingCall(inquiryCmd)
-    cmd.start(1.0)
+    theDoorCtrl = DoorCtrl()
+    theCameraCtrl = CameraCtrl()
+    jetson = Jetson(theDoorCtrl, theCameraCtrl)
+    jetson.start()
 
     reactor.run()
