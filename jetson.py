@@ -4,7 +4,7 @@ from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
 from twisted.internet import reactor, task, defer, threads, protocol
 from twisted.web.client import Agent, readBody, ProxyAgent
-from twisted.internet.endpoints import HostnameEndpoint, TCP4ClientEndpoint
+from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.web.http_headers import Headers
 import json
 import time
