@@ -1,0 +1,4 @@
+#!/bin/bash
+/usr/bin/python /home/ubuntu/jetson.py &
+touch /home/ubuntu/hellojetson
+exit 0
