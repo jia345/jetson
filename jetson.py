@@ -11,6 +11,7 @@ import time
 import urllib
 #import cv2
 import doorCtrl
+import camera
 
 #url = 'http://localhost:5000'
 #url = 'http://121.40.127.65:2121'
@@ -19,8 +20,15 @@ shopping_cart = [{'sku_id':33212,'num':2},
                  {'sku_id':33525,'num':1},
                  {'sku_id':33210,'num':8}]
 
+def get_mac_addr():
+    import uuid
+    node = uuid.getnode()
+    mac = uuid.UUID(int = node).hex[-12:]
+    return mac
+
 def get_door_id():
     return '0x000000017410b0c810000000150000c0'
+    #return get_mac_addr()
 
 class StringProducer(object):
     implements(IBodyProducer)
@@ -51,10 +59,9 @@ class SimpleReceiver(protocol.Protocol):
         self.d.callback(self.buf)
 
 def httpRequest(url, values=None, headers=None, method='POST'):
-    endpoint = TCP4ClientEndpoint(reactor, "135.245.48.34", 8000)
-    #endpoint = HostnameEndpoint(reactor, "135.245.48.34", 8000)
-    agent = ProxyAgent(endpoint)
-    #agent = Agent(reactor)
+    #endpoint = TCP4ClientEndpoint(reactor, "135.245.48.34", 8000)
+    #agent = ProxyAgent(endpoint)
+    agent = Agent(reactor)
     data = urllib.urlencode(values) if values else None
 
     d = agent.request(method,
@@ -76,15 +83,15 @@ def httpRequest(url, values=None, headers=None, method='POST'):
 def cb_error(reason):
     print reason
 
-def cbCollectInfoResponse(rsp):
-    global theDoorCtrl
+def cb_collect_info_response(rsp):
+    global the_door_ctrl
     print u'<<<<<<<<<< rsp is %s' % rsp
     parsed = None
     try:
         parsed = json.loads(rsp)
         cmd = parsed['response']
         if cmd == 'openDoor':
-            theDoorCtrl.open_the_door()
+            the_door_ctrl.open_the_door()
             print 'the door is opened'
     except:
         print 'do nothing'
@@ -118,9 +125,9 @@ def complete_order():
     d.addErrback(cb_error)
 
 def collect_info_cmd():
-    global theDoorCtrl
+    global the_door_ctrl
     global url
-    status = theDoorCtrl.check_the_door()
+    status = the_door_ctrl.check_the_door()
     is_open = 0
     if status == True:
         is_open = 1
@@ -131,32 +138,8 @@ def collect_info_cmd():
                     {'User-Agent': ['Jetson Tx1'],
                      'Content-Type': ['application/x-www-form-urlencoded']},
                     'POST')
-    d.addCallback(cbCollectInfoResponse)
+    d.addCallback(cb_collect_info_response)
     d.addErrback(cb_error)
-
-def openCamera():
-    time.sleep(1)
-    print '*** camera openned'
-    return False
-
-def cbOpenCamera(result):
-    d = threads.deferToThread(recognition)
-    d.addCallback(cbRecognition)
-
-def recognition():
-    time.sleep(3)
-    #count = 100000
-    #while count > 0:
-    #    count = count - 1
-    print '*** recognited'
-    result = '{item="a"}'
-    #return jason.loads("{item='a'}")
-    return result
-
-def cbRecognition(result):
-    print u'%s' % result
-    d = threads.deferToThread(recognition)
-    d.addCallback(cbRecognition)
 
 def cb_door_closed():
     print '******************************'
@@ -165,8 +148,8 @@ def cb_door_closed():
     complete_order()
 
 if __name__ == "__main__":
-    global theDoorCtrl
-    theDoorCtrl = doorCtrl.DoorCtrl(cb_door_closed)
+    global the_door_ctrl
+    the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
     cmd = task.LoopingCall(collect_info_cmd)
     cmd.start(1.0)
 
