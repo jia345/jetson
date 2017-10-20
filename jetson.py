@@ -19,6 +19,8 @@ url = 'http://getway.52ywy.com:2121'
 shopping_cart = [{'sku_id':33212,'num':2},
                  {'sku_id':33525,'num':1},
                  {'sku_id':33210,'num':8}]
+#the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
+#the_camera_ctrl = camera.CameraCtrl()
 
 def get_mac_addr():
     import uuid
@@ -93,6 +95,7 @@ def cb_collect_info_response(rsp):
         if cmd == 'openDoor':
             the_door_ctrl.open_the_door()
             print 'the door is opened'
+            the_camera_ctrl.start()
     except:
         print 'do nothing'
         #rc = parsed['code']
@@ -102,7 +105,8 @@ def cb_collect_info_response(rsp):
         #    print 'oops'
 
 def cb_complete_order_response(rsp):
-    print u"hihi %s" % rsp
+    print u"<<<<<<<< complete_order %s" % rsp
+    shopping_cart.clear()
 
 def complete_order():
     global url
@@ -123,6 +127,8 @@ def complete_order():
                     'POST')
     d.addCallback(cb_complete_order_response)
     d.addErrback(cb_error)
+
+    the_camera_ctrl.stop()
 
 def collect_info_cmd():
     global the_door_ctrl
@@ -147,10 +153,22 @@ def cb_door_closed():
     print '******************************'
     complete_order()
 
-if __name__ == "__main__":
+def cb_notify_item(sku_id, num):
+    global shopping_cart
+    item = {'sku_id': sku_id, 'num': num}
+    shopping_cart.append(item)
+
+def main():
     global the_door_ctrl
     the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
     cmd = task.LoopingCall(collect_info_cmd)
     cmd.start(1.0)
 
+    global the_camera_ctrl
+    the_camera_ctrl = camera.CameraCtrl()
+    the_camera_ctrl.init(cb_notify_item)
+
     reactor.run()
+
+if __name__ == "__main__":
+    main()

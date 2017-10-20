@@ -7,7 +7,7 @@ class CameraCtrl():
         self.__cb_notify_item = None
         #self.__stop_monitor = True
 
-    def init(cb_notify_item):
+    def init(self, cb_notify_item):
         # initialization for camera and thread
         self.__cb_notify_item = cb_notify_item
 
