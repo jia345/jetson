@@ -156,7 +156,10 @@ def cb_door_closed():
 def cb_notify_item(sku_id, num):
     global shopping_cart
     item = {'sku_id': sku_id, 'num': num}
-    shopping_cart.append(item)
+    for x in shopping_cart:
+        if x.get('sku_id') == sku_id:
+            x['num'] = x['num'] + num
+    # shopping_cart.append(item)
 
 def main():
     global the_door_ctrl
