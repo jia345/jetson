@@ -60,9 +60,9 @@ class UsbModem_4G_Ctrl():
             return False
                
     def run_loop(self):
-        time.sleep(10)
+        time.sleep(30)
         while(1) :
-            time.sleep(5)
+            time.sleep(15)
             if self.check_modem_dev() :
                 self.open_modem()
 

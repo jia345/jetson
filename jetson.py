@@ -9,18 +9,19 @@ from twisted.web.http_headers import Headers
 import json
 import time
 import urllib
-#import cv2
 import doorCtrl
-import camera
+import Jetson as JT
 
 #url = 'http://localhost:5000'
 #url = 'http://121.40.127.65:2121'
 url = 'http://getway.52ywy.com:2121'
-shopping_cart = [{'sku_id':33212,'num':2},
-                 {'sku_id':33525,'num':1},
-                 {'sku_id':33210,'num':8}]
+#shopping_cart = [{'sku_id':33212,'num':2},
+#                 {'sku_id':33525,'num':1},
+#                 {'sku_id':33210,'num':8}]
+shopping_cart = []
 #the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
 #the_camera_ctrl = camera.CameraCtrl()
+the_camera_ctrl = JT.Classfication()
 
 def get_mac_addr():
     import uuid
@@ -85,10 +86,16 @@ def httpRequest(url, values=None, headers=None, method='POST'):
 def cb_error(reason):
     print reason
 
+#is_door_opened = 0
 def cb_collect_info_response(rsp):
     global the_door_ctrl
+    #global is_door_opened
     print u'<<<<<<<<<< rsp is %s' % rsp
     parsed = None
+    #if is_door_opened == 0:
+    #    the_door_ctrl.open_the_door()
+    #    is_door_opened = 1
+    #    the_camera_ctrl.start()
     try:
         parsed = json.loads(rsp)
         cmd = parsed['response']
@@ -106,7 +113,8 @@ def cb_collect_info_response(rsp):
 
 def cb_complete_order_response(rsp):
     print u"<<<<<<<< complete_order %s" % rsp
-    shopping_cart.clear()
+    global shopping_cart
+    shopping_cart = []
 
 def complete_order():
     global url
@@ -117,6 +125,8 @@ def complete_order():
     #             ('items[]', "{'sku_id':33525,'num':1}"), ('items[]', "{'sku_id':33210,'num':8}") ]
     #post_data = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': get_door_id()) ]
     #post_data = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id': get_door_id()) ]
+    print post_data
+    print "YYYYY %s" % shopping_cart
     for item in shopping_cart:
         post_data.append(tuple(['items[]', json.dumps(item, separators=(',',':'))]))
 
@@ -139,6 +149,7 @@ def collect_info_cmd():
         is_open = 1
 
     post_data = { 'class': 'Refrigerator', 'method': 'collectInfo', 'door_id': get_door_id(), 'is_open': is_open }
+    print '&&&&& post data %s' % post_data
     d = httpRequest(url,
                     post_data,
                     {'User-Agent': ['Jetson Tx1'],
@@ -155,11 +166,23 @@ def cb_door_closed():
 
 def cb_notify_item(sku_id, num):
     global shopping_cart
-    item = {'sku_id': sku_id, 'num': num}
+    #item = {'sku_id': sku_id, 'num': num}
+    is_found = 0
     for x in shopping_cart:
         if x.get('sku_id') == sku_id:
-            x['num'] = x['num'] + num
+            x['num'] = x['num'] - num
+            is_found = 1
+        else:
+            pass
+            #x['sku_id'] = sku_id
+            #x['num'] = num
+    if is_found == 0:
+        shopping_cart.append({'sku_id':sku_id,'num':-num})
+    print 'HHHHHHHHHHHH %s' % shopping_cart
     # shopping_cart.append(item)
+
+def cb_notify_1():
+    print 'HHHHHHHHHHHHHHHHHH'
 
 def main():
     global the_door_ctrl
@@ -168,8 +191,12 @@ def main():
     cmd.start(1.0)
 
     global the_camera_ctrl
-    the_camera_ctrl = camera.CameraCtrl()
     the_camera_ctrl.init(cb_notify_item)
+    #the_camera_ctrl.init(cb_notify_1)
+
+    #cls = JT.Classfication()
+    #cls.init(cb_notify_item)
+    #cls.start()
 
     reactor.run()
 
