@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-from twisted.internet import reactor,threads
 import time
 import logging
+from serialCom import usbModemCtrl
 
 
 class UsbModem_4G_Ctrl():
@@ -11,28 +11,17 @@ class UsbModem_4G_Ctrl():
         self.modem_pluggedIn = False
         self.modem_connected = False
         self.modem_sq = 0
+        self.serial = None
+        self.modem = usbModemCtrl()
 
     def open_modem(self):
         if self.modem_pluggedIn == True:
             if self.modem_connected == True:
                 return ;
-            output = open('/dev/ttyUSB0','w+')
-            output.write("AT+CFUN=1\n")
-            output.flush()
-            logging.info("send AT+CFUN=1")
-            time.sleep(20)
+            self.modem_connected = True
+            self.modem_connected = self.modem.setup4Gconnect()
+            logging.info("setting up 4G connection (%d) !! "  % self.modem_connected)
 
-            output.write("AT+CGACT=1,1\n")
-            output.flush()
-            logging.info("send AT+CGACT=1")
-            time.sleep(10)
-
-            output.write("AT+ZGACT=1,1\n")
-            output.flush()
-            logging.info("send AT+ZGACT=1")
-            time.sleep(5)
-            logging.info("modem is oppened & connected!!")
-            self.modem_connected = True 
 
     def check_modem_dev(self):
         state = os.path.exists('/dev/ttyUSB0')
@@ -46,25 +35,15 @@ class UsbModem_4G_Ctrl():
             self.modem_pluggedIn = False
             self.modem_connected = False
             logging.info("USB Modem is unplugged!!")
-            return state
 
-        try:
-            op = open("/dev/ttyUSB0")
-            logging.info("Usb Modem is aviliable !")
-            return True
-        except IOError,e:
-            logging.warn(e) 
-            self.modem_pluggedIn = False
-            self.modem_connected = False
-            logging.warn("Usb Modem is unviliable !")
-            return False
+        return state
                
     def run_loop(self):
-        time.sleep(30)
-        while(1) :
-            time.sleep(15)
+        time.sleep(15)
+        while(True) :
             if self.check_modem_dev() :
                 self.open_modem()
+            time.sleep(5)
 
 
 if __name__ == "__main__":
