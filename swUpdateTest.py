@@ -88,8 +88,7 @@ def cb_collect_info_response(rsp):
         if cmd == 'openDoor':
             print 'the door is opened'
         print "before defer download"
-        if  a_update_test.has_update_urls(rsp):        
-            reactor.callInThread(a_update_test.sw_download,rsp)
+        reactor.callInThread(a_update_test.sw_download,rsp)
         print "after defer download"
         reactor.callInThread(a_update_test.sw_update, rsp)
     except:

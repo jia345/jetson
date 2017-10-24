@@ -49,7 +49,7 @@ class swUpdate():
             return True
         return False
 
-    def has_update_urls(self, urls):
+    def has_download_urls(self, urls):
         get_json = json.loads(urls)
         xx = get_json['ver'] if 'ver' in get_json else ""
         if xx == "":
@@ -69,7 +69,7 @@ class swUpdate():
         print "dowload result =", result
     
     def sw_download(self, urls):
-        if self.has_update_urls(urls) == True and self.downloading==False:
+        if self.has_download_urls(urls) == True and self.downloading==False:
             self.downloading=True
             get_json = json.loads(urls)
             xx = get_json['ver'] if 'ver' in get_json else ""
