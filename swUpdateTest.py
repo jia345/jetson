@@ -17,7 +17,6 @@ url = 'http://localhost:5000'
 #url = 'http://121.40.127.65:2121'
 #url = 'http://getway.52ywy.com:2121'
 shopping_cart = []
-
 class StringProducer(object):
     implements(IBodyProducer)
 
@@ -88,10 +87,11 @@ def cb_collect_info_response(rsp):
         cmd = parsed['response']if u'response' in parsed else ""
         if cmd == 'openDoor':
             print 'the door is opened'
-        print "before download"
-        if a_update_test.has_update(rsp) :
-            a_update_test.sw_download(rsp) 
-        print "after download"
+        print "before defer download"
+        if  a_update_test.has_update_urls(rsp):        
+            reactor.callInThread(a_update_test.sw_download,rsp)
+        print "after defer download"
+        reactor.callInThread(a_update_test.sw_update, rsp)
     except:
         print 'do nothing'
         #rc = parsed['code']
@@ -105,7 +105,10 @@ def collect_info_cmd():
     global a_update_test
    # print a_update_test.get_current_ver().items()
     post_data = { 'class': 'Refrigerator', 'method': 'collectInfo', 'door_id': "1", 'is_open': '1' }
-    post_data = dict(post_data.items()+a_update_test.get_current_ver().items())
+    if a_update_test.can_send_readyupdate():
+        #send readyupdate
+        post_data={'state':'maintenance','data':{'cmd':'readyupdate'}}
+    post_data = a_update_test.append_current_ver(post_data)
     print '&&&&& post data %s' % post_data
     d = httpRequest(url,
                     post_data,
@@ -117,7 +120,6 @@ def collect_info_cmd():
 
 def cb_after_download():
     print "call back after download"
-    a_update_test.sw_update()
 
 def cb_after_update():
     print "call back after update"
