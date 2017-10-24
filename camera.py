@@ -21,12 +21,12 @@ class CameraCtrl():
         print "let's stop"
 
 def cb_notify_item(sku_id,num):
-    print "sku_id=%d, num=%d" % sku_id, num
+    print "sku_id=%d, num=%d" % (sku_id, num)
 
 def main():
     cameraCtrl = CameraCtrl()
     #threads.deferToThread(cameraCtrl.startMonitor())
-    cameraCtrl.init()
+    cameraCtrl.init(cb_notify_item)
     cameraCtrl.start()
     #key = cv2.waitKey(1) & 0xFF
     #if key == ord('q'):
