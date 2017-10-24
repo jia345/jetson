@@ -28,50 +28,65 @@ class usbModemCtrl() :
         if self.ser.isOpen() :
             try:
                 self.ser.flushInput() #flush input buffer, discarding all its contents
-                self.ser.flushOutput()#flush output buffer, aborting current output
-                self.ser.write("AT+CFUN=0\r\n")
+                #self.ser.flushOutput()#flush output buffer, aborting current output
+                self.ser.write("AT+CFUN=0\015")
                 logging.info("AT+CFUN=0") 
-                time.sleep(6)
-                self.ser.write("AT+CFUN=1\r\n")
+                time.sleep(3)
+                self.ser.flushInput() #flush input buffer, discarding all its contents
+                self.ser.write("AT+CFUN=1\015")
                 logging.info("AT+CFUN=1") 
+                time.sleep(0.5)
                 setup_step = 0
-                wait_counter = 0
+                wait_counter = 45
                 retry = 0
                 while True:
                     response = self.ser.readline()
-                    if (setup_step == 0) and (response[0:9] == '+CEREG: 1') :
+                    logging.info("read data: " + response)
+                    if (setup_step == 0) and ((response[0:9] == '+CEREG: 1') or (response[0:7] == '+CREG: ') or (response[0:9] == '+CGDCONT:') or (response[0:2]=='OK')):
+
                         setup_step = 1
                         wait_counter = 51
                         retry = 0
                         logging.info("read data: " + response)
                         logging.info("AT+CFUN=1 done, next step %d" % setup_step)
-                    elif (setup_step == 1) and (response[0:9] == '+ZGIPDNS:') :
+                    elif (setup_step == 1) and ((response[0:9] == '+ZGIPDNS:')) :
                         setup_step = 2
                         wait_counter = 51
                         retry = 0
                         logging.info("read data: " + response)
                         logging.info("AT+CGACT=1 done, next step %d" % setup_step)
-                    elif (setup_step == 2) and (response[0:9] == '+ZCONSTAT') :
+                    elif (setup_step == 2) and ((response[0:9] == '+ZCONSTAT')):
                         setup_step = 3
                         wait_counter = 51
                         retry = 0
                         logging.info("read data: " + response)
                         logging.info("AT+ZGACT=1 done, next step %d" % setup_step)
+                    elif (response[0:5] == '+CME E') :
+                        wait_counter = 51
  
                     if (setup_step == 0) and (wait_counter > 50) :
-                        self.ser.write("AT+CFUN=1\r\n")
+                        self.ser.flushInput() #flush input buffer, discarding all its contents
+                        #self.ser.flushOutput()#flush output buffer, aborting current output
+ 
+                        self.ser.write("AT+CFUN=1\015")
+                        #time.sleep(0.4)
                         logging.info("AT+CFUN=1") 
-                        wait_counter = 0
+                        wait_counter = 30
                         retry += 1
-                        if retry == 5:
+                        if retry == 10:
                             logging.info("retry over 3 time on AT+CFUN=1") 
                             return False
                         continue
 
                     if (setup_step == 1) and (wait_counter > 50) :
-                        self.ser.write("AT+CGACT=1,1\r\n")
+                        self.ser.flushInput() #flush input buffer, discarding all its contents
+                        #self.ser.flushOutput()#flush output buffer, aborting current output
+ 
+                        self.ser.write("AT+CGACT=1,1\015")
+                        #time.sleep(0.5)
                         logging.info("AT+CGACT=1,1") 
-                        wait_counter = 0
+                        wait_counter = 20 
+                        #time.sleep(1)
                         retry += 1
                         if retry == 7:
                             logging.info("retry over 3 time on AT+CGACT=1,1") 
@@ -79,9 +94,13 @@ class usbModemCtrl() :
                         continue
 
                     if (setup_step == 2) and (wait_counter > 50) :
-                        self.ser.write("AT+ZGACT=1,1\r\n")
+                        self.ser.flushInput() #flush input buffer, discarding all its contents
+                        #self.ser.flushOutput()#flush output buffer, aborting current output
+ 
+                        self.ser.write("AT+ZGACT=1,1\015")
+                        #time.sleep(0.5)
                         logging.info("AT+ZGACT=1,1") 
-                        wait_counter = 0
+                        wait_counter = 2 
                         retry += 1
                         if retry == 5:
                             logging.info("retry over 3 time on AT+ZGACT=1,1") 
@@ -93,8 +112,8 @@ class usbModemCtrl() :
                         wait_counter = 0
                         break;
                     wait_counter += 1
-                    if wait_counter == 50 :
-                        logging.info("wait counter %d step = %d retry=%d " % (wait_counter,setup_step,retry))
+                    #if wait_counter == 50 :
+                    logging.info("wait counter %d step = %d retry=%d " % (wait_counter,setup_step,retry))
 
                 self.ser.close()
                 return True
