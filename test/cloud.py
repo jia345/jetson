@@ -107,6 +107,12 @@ def root():
                 'id': 'xxxx',
                 'openDoor': doorState
             }
+            sw_msg= {
+                'url_html':'http://135.251.101.152:80/html.gz',
+                'url_model':'http://135.251.101.152:80/model.gz',
+                'url_main_control':'http://135.251.101.152:80/main.gz'
+            }
+            msg=dict(msg.items()+sw_msg.items())
     else:
         return render_template('index.html')
     return jsonify(msg)
