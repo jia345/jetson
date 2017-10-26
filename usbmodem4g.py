@@ -4,6 +4,7 @@ import os
 import time
 import logging
 from serialCom import usbModemCtrl
+from jetson import main
 
 
 class UsbModem_4G_Ctrl():
@@ -11,16 +12,25 @@ class UsbModem_4G_Ctrl():
         self.modem_pluggedIn = False
         self.modem_connected = False
         self.modem_sq = 0
-        self.serial = None
-        self.modem = usbModemCtrl()
+        #self.modem = usbModemCtrl()
+        self.modem = None
+        self.mainloop = False
 
     def open_modem(self):
         if self.modem_pluggedIn == True:
             if self.modem_connected == True:
                 return ;
             self.modem_connected = True
+            if self.modem == None:
+                self.modem = usbModemCtrl()
+
             self.modem_connected = self.modem.setup4Gconnect()
             logging.info("setting up 4G connection (%d) !! "  % self.modem_connected)
+
+            if (self.mainloop == False) and self.modem_connected:
+                #main()
+                #os.system('. /home/ubuntu/jetsonMain.sh')
+                self.mainloop = True
 
 
     def check_modem_dev(self):
@@ -35,11 +45,15 @@ class UsbModem_4G_Ctrl():
             self.modem_pluggedIn = False
             self.modem_connected = False
             logging.info("USB Modem is unplugged!!")
+	elif (state == True) and (self.modem == None):
+            logging.info("USB Modem is created!!")
+            self.modem = usbModemCtrl()
 
         return state
                
     def run_loop(self):
-        time.sleep(15)
+        time.sleep(5)
+        os.system('/home/ubuntu/jetsonMain.sh')
         while(True) :
             if self.check_modem_dev() :
                 self.open_modem()
