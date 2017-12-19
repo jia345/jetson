@@ -9,8 +9,8 @@ from twisted.web.http_headers import Headers
 import json
 import time
 import urllib
-import doorCtrl
-import Jetson as JT
+import doorPcCtrl as doorCtrl
+#import Jetson as JT
 import logging
 
 #url = 'http://localhost:5000'
@@ -20,9 +20,9 @@ url = 'http://getway.52ywy.com:2121'
 #                 {'sku_id':33525,'num':1},
 #                 {'sku_id':33210,'num':8}]
 shopping_cart = []
+is_open = 0
 #the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
-#the_camera_ctrl = camera.CameraCtrl()
-the_camera_ctrl = JT.Classfication()
+#the_camera_ctrl = JT.Classfication()
 
 def get_mac_addr():
     import uuid
@@ -104,7 +104,7 @@ def cb_collect_info_response(rsp):
         if cmd == 'openDoor':
             the_door_ctrl.open_the_door()
             logging.info('the door is opened')
-            the_camera_ctrl.start()
+            #the_camera_ctrl.start()
     except:
         logging.info('do nothing')
         #rc = parsed['code']
@@ -121,8 +121,8 @@ def cb_complete_order_response(rsp):
 def test_complete_order():
     global url
     global shopping_cart
-    global the_camera_ctrl
-    logging.basicConfig(filename='/home/ubuntu/jetsond.log',level=logging.INFO)
+    #global the_camera_ctrl
+    logging.basicConfig(filename='/home/hj/jetsond.log',level=logging.INFO)
 
     post_data = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id', get_door_id()) ]
     #  ('items[]', "{'sku_id':33212,'num':2}"),
@@ -146,7 +146,7 @@ def test_complete_order():
 def complete_order():
     global url
     global shopping_cart
-    global the_camera_ctrl
+    #global the_camera_ctrl
 
     post_data = [ ('class', 'Refrigerator'), ('method', 'completeOrder'), ('door_id', get_door_id()) ]
     #  ('items[]', "{'sku_id':33212,'num':2}"),
@@ -166,15 +166,29 @@ def complete_order():
     d.addCallback(cb_complete_order_response)
     d.addErrback(cb_error)
 
-    the_camera_ctrl.stop()
+    #the_camera_ctrl.stop()
 
 def collect_info_cmd():
     global the_door_ctrl
     global url
+    global is_open
+
+    old_status = is_open
+
+    logging.info('checking door status...')
+ 
     status = the_door_ctrl.check_the_door()
-    is_open = 0
+    logging.info('current door status is %d' % status)
+
+    if old_status == 1 and status == 0:
+        # door closed
+        logging.info('door is closed...')
+        cb_door_closed()
+
     if status == True:
         is_open = 1
+    else:
+        is_open = 0
 
     post_data = { 'class': 'Refrigerator', 'method': 'collectInfo', 'door_id': get_door_id(), 'is_open': is_open }
     logging.info('&&&&& post data %s' % post_data)
@@ -213,21 +227,17 @@ def cb_notify_1():
     logging.info('HHHHHHHHHHHHHHHHHH')
 
 def main():
-    logging.basicConfig(filename='/home/ubuntu/jetsond.log',level=logging.INFO)
+    logging.basicConfig(filename='/home/hj/jetsond.log',level=logging.INFO)
+    logging.info('starting ...')
     global the_door_ctrl
-    the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
+    #the_door_ctrl = doorCtrl.DoorCtrl(cb_door_closed)
+    the_door_ctrl = doorCtrl.DoorCtrl()
     #time.sleep(40)
     cmd = task.LoopingCall(collect_info_cmd)
     cmd.start(1.0)
 
-    global the_camera_ctrl
-    the_camera_ctrl.init(cb_notify_item)
-    #the_camera_ctrl.start()
-    #the_camera_ctrl.init(cb_notify_1)
-
-    #cls = JT.Classfication()
-    #cls.init(cb_notify_item)
-    #cls.start()
+    #global the_camera_ctrl
+    #the_camera_ctrl.init(cb_notify_item)
 
     reactor.run()
 
